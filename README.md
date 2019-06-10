@@ -1,12 +1,12 @@
 1. Checkout the repository or your clone of that repository
 
-2. Initial step is to install backup-script system-wide and to install dependencies (rclone and borgbackup) if needed. To do that please run the command:
+2. First step is to install backup-script system-wide and to install dependencies (rclone and borgbackup) if needed. To do that please run the command:
 
 ```sh
 ./backup-script install
 ```
 
-3. Write your backup configuration using test-backup file as a reference
+3. Write your backup configuration. You may use test-backup file as a reference.
 
 4. Next step is to install backup configuration system-wide and register systemd/launchd periodic jobs. To do that run the command:
 
@@ -14,20 +14,22 @@
 backup-script install test-backup # or ./path/to/test-backup
 ```
 
-You could also choose not to install backup-script system-wide and only install backup configuration. You may find it usefull if you are working back and forth on modifying backup-script content.
+* You could also choose not to install backup-script system-wide and only install backup configuration. You may find it usefull if you are working back and forth on modifying backup-script content.
 
 ```sh
-./backup-script install ./test-backup
+./backup-script install test-backup
 ```
 
 5. Now the repository needs to be initialized. For that run the command:
-
 ```sh
 test-backup init
 ```
-Your ``test-backup`` at that point is installed as a system-wide command, so you could run the command from any directory.
 
-That's it!
+* Your ``test-backup`` at that point is installed as a system-wide command, so you could run the command from any directory.
+
+* If your RCLONE_REMOTE is not configured the interactive rclone configuration will start.
+
+7. That's it! At that point once in an hour backup will be created and once a day it will be uploaded to your could store.
 
 ### Short summary of commands
 ```sh
