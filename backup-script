@@ -390,7 +390,7 @@ uninstall-systemd() {
   sudo systemctl disable "${SYSTEMD_NAME}.timer" || { echo "Unable to disable ${SYSTEMD_NAME}.timer (${?})" >&2; exit 1; }
   sudo systemctl disable "${SYSTEMD_NAME}.service" || { echo "Unable to disable ${SYSTEMD_NAME}.service (${?})" >&2; exit 1; }
 
-  sudo rm  "/etc/systemd/system/${SYSTEMD_NAME}.timer" || { echo "Unable to remove ${SYSTEMD_NAME}.timer file (${?})" >&2; exit 1; }
+  sudo rm "/etc/systemd/system/${SYSTEMD_NAME}.timer" || { echo "Unable to remove ${SYSTEMD_NAME}.timer file (${?})" >&2; exit 1; }
   sudo rm "/etc/systemd/system/${SYSTEMD_NAME}.service" || { echo "Unable to remove ${SYSTEMD_NAME}.service file (${?})" >&2; exit 1; }
 }
 
@@ -552,6 +552,17 @@ start() {
   elif [[ "$OSTYPE" == "darwin"* ]]; then
     prepare-launchd-env
     launchctl start "${LAUNCHD_LABEL}" || { echo "Unable to start ${LAUNCHD_LABEL} (${?})" >&2; exit 1; }
+  fi
+}
+
+stop() {
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    prepare-systemd-env
+    sudo systemctl stop "${SYSTEMD_NAME}.service" || { echo "Unable to stop (${?})" >&2; exit 1; }
+
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    prepare-launchd-env
+    launchctl stop "${LAUNCHD_LABEL}" || { echo "Unable to stop ${LAUNCHD_LABEL} (${?})" >&2; exit 1; }
   fi
 }
 
