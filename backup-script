@@ -124,7 +124,7 @@ ensure-repo-volume-connected() {
         exit 1
       fi
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-      if [[ ! $(findmnt -M "${REPO_VOLUME}") ]]; then
+      if ! findmnt -M "${REPO_VOLUME}"; then
         echo "Please connect volume ${REPO_VOLUME}" >&2
         exit 1
       fi
