@@ -1,0 +1,24 @@
+[Unit]
+Description=LED heartbeat
+
+Requires=local-fs.target remote-fs.target network.target nss-lookup.target time-sync.target
+After=   local-fs.target remote-fs.target network.target nss-lookup.target time-sync.target
+
+[Service]
+Type=simple
+
+ExecStart=/usr/local/bin/led-heartbeat.sh
+Restart=always
+
+User=root
+Group=root
+
+SyslogIdentifier=led-heartbeat
+
+ProtectSystem=full
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
