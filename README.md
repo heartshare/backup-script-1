@@ -1,33 +1,45 @@
-1. Checkout the repository or your clone of that repository
+## A script to initialize borgbackup and rclone and run them as periodic services
 
-2. Initial step is to install backup-script system-wide and to install dependencies (rclone and borgbackup) if needed. To do that please run the command:
+This script aims to ease the installation of borgbackup and rclone. The idea is to make backups each hour and upload them to cloud storage each day.
+
+This script use your backup configuration to bundle it into the executable file to provide you with the handy commands and register systemd/launchd jobs to run it each hour.
+
+If you wish to fine-tune the borgbackup, rclone or systemd services I suggest you to clone that repository and make changes to backup-script.
+
+### How to install/use it
+
+1. Checkout the repository
+
+2. Install backup-script system-wide and install dependencies if needed (rclone and borgbackup):
 
 ```sh
 ./backup-script install
 ```
 
-3. Write your backup configuration using test-backup file as a reference
+3. Write your backup configuration. Use `test-backup` file as a reference.
 
-4. Next step is to install backup configuration system-wide and register systemd/launchd periodic jobs. To do that run the command:
+4. Make an executable bundle from your configuration and backup-script, install it system-wide, and register systemd/launchd periodic jobs:
 
 ```sh
 backup-script install test-backup # or ./path/to/test-backup
 ```
 
-You could also choose not to install backup-script system-wide and only install backup configuration. You may find it usefull if you are working back and forth on modifying backup-script content.
+* You could also choose not to install backup-script system-wide and only install executable bundle of your config + said script. You may find it usefull if you are working back and forth on modifying backup-script content.
 
 ```sh
-./backup-script install ./test-backup
+./backup-script install test-backup
 ```
 
-5. Now the repository needs to be initialized. For that run the command:
-
+5. Initialize the borg-backup repository:
 ```sh
 test-backup init
 ```
-Your ``test-backup`` at that point is installed as a system-wide command, so you could run the command from any directory.
 
-That's it!
+* Your ``test-backup`` at that point is installed as a system-wide command, so you could run the command from any directory.
+
+* If your RCLONE_REMOTE is not configured the interactive rclone configuration will start.
+
+7. That's it! At that point once in an hour backup will be created and once a day it will be uploaded to your could store.
 
 ### Short summary of commands
 ```sh
