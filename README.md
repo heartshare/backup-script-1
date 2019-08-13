@@ -2,9 +2,11 @@
 
 This script aims to ease the installation of borgbackup and rclone. The idea is to make backups each hour and upload them to cloud storage each day.
 
+You could run this on Linux or on macOS.
+
 This script use your backup configuration to bundle it into the executable file to provide you with the handy commands and register systemd/launchd jobs to run it each hour.
 
-If you wish to fine-tune the borgbackup, rclone or systemd services I suggest you to clone that repository and make changes to backup-script.
+If you wish to fine-tune the borgbackup, rclone or systemd/launchd services I suggest you to clone that repository and make changes to [backup-script](backup-script) file.
 
 ### How to install/use it
 
@@ -16,7 +18,7 @@ If you wish to fine-tune the borgbackup, rclone or systemd services I suggest yo
 ./backup-script install
 ```
 
-3. Write your backup configuration. Use `test-backup` file as a reference.
+3. Write your backup configuration. You could use [test-backup](test-backup) file as a reference.
 
 4. Run the following command to make an executable bundle from your configuration and backup-script, install it system-wide, and register systemd/launchd periodic jobs:
 
