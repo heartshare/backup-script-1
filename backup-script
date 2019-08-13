@@ -16,6 +16,11 @@
 
 set -o nounset
 
+fail() {
+  echo "${BASH_SOURCE[1]}:${BASH_LINENO[0]}: in \`${FUNCNAME[1]}': Error: ${1:-"Abnormal termination"}" >&2
+  exit "${2:-1}"
+}
+
 determine-root-user-and-group() {
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     ROOT_USER_AND_GROUP="root:root"
@@ -35,10 +40,10 @@ determine-tee-append-option() {
 determine-script-path() {
   local RELATIVE_DIR_PATH
 
-  RELATIVE_DIR_PATH="$(dirname "${BASH_SOURCE[0]}")" || { echo "Unable to get RELATIVE_DIR_PATH (${?})" >&2; exit 1; }
+  RELATIVE_DIR_PATH="$(dirname "${BASH_SOURCE[0]}")" || fail "Unable to get RELATIVE_DIR_PATH ($?)"
 
-  SCRIPT_ABSOLUTE_DIR_PATH="$(cd "${RELATIVE_DIR_PATH}" >/dev/null 2>&1 && pwd)" || { echo "Unable to get SCRIPT_ABSOLUTE_DIR_PATH (${?})" >&2; exit 1; }
-  SCRIPT_FILENAME="$(basename "${BASH_SOURCE[0]}")" || { echo "Unable to get SCRIPT_FILENAME (${?})" >&2; exit 1; }
+  SCRIPT_ABSOLUTE_DIR_PATH="$(cd "${RELATIVE_DIR_PATH}" >/dev/null 2>&1 && pwd)" || fail "Unable to get SCRIPT_ABSOLUTE_DIR_PATH ($?)"
+  SCRIPT_FILENAME="$(basename "${BASH_SOURCE[0]}")" || fail "Unable to get SCRIPT_FILENAME ($?)"
 
   export SCRIPT_ABSOLUTE_DIR_PATH
   export SCRIPT_FILENAME
@@ -47,10 +52,10 @@ determine-script-path() {
 determine-config-path() {
   local CONFIG_RELATIVE_DIR_PATH
 
-  CONFIG_RELATIVE_DIR_PATH="$(dirname "${1}")" || { echo "Unable to get CONFIG_RELATIVE_DIR_PATH (${?})" >&2; exit 1; }
+  CONFIG_RELATIVE_DIR_PATH="$(dirname "$1")" || fail "Unable to get CONFIG_RELATIVE_DIR_PATH ($?)"
 
-  CONFIG_ABSOLUTE_DIR_PATH="$(cd "${CONFIG_RELATIVE_DIR_PATH}" >/dev/null 2>&1 && pwd)" || { echo "Unable to get CONFIG_ABSOLUTE_DIR_PATH (${?})" >&2; exit 1; }
-  CONFIG_FILENAME="$(basename "${1}")" || { echo "Unable to get CONFIG_FILENAME (${?})" >&2; exit 1; }
+  CONFIG_ABSOLUTE_DIR_PATH="$(cd "${CONFIG_RELATIVE_DIR_PATH}" >/dev/null 2>&1 && pwd)" || fail "Unable to get CONFIG_ABSOLUTE_DIR_PATH ($?)"
+  CONFIG_FILENAME="$(basename "$1")" || fail "Unable to get CONFIG_FILENAME ($?)"
 
   export CONFIG_ABSOLUTE_DIR_PATH
   export CONFIG_FILENAME
@@ -79,11 +84,11 @@ prepare-borg-env() {
       echo "Unable to find passphrase file ${PASSPHRASE_FILE}" >&2
       exit 1
     fi
-    BORG_PASSPHRASE="$(cat "${PASSPHRASE_FILE}")" || { echo "Unable to load passphrase from ${PASSPHRASE_FILE}" >&2; exit 1; }
+    BORG_PASSPHRASE="$(cat "${PASSPHRASE_FILE}")" || fail "Unable to load passphrase from ${PASSPHRASE_FILE}"
   fi
 
   if [ -z "${BORG_REPO_HASH:-}" ]; then
-    BORG_REPO_HASH="$(echo "${BORG_REPO}" | openssl sha256 -r | cut -f 1 -d " "; test "${PIPESTATUS[*]}" = "0 0 0")" || { echo "Unable to make hash of borg repo name" >&2; exit 1; }
+    BORG_REPO_HASH="$(echo "${BORG_REPO}" | openssl sha256 -r | cut -f 1 -d " "; test "${PIPESTATUS[*]}" = "0 0 0")" || fail "Unable to make hash of borg repo name"
   fi
 
   export BORG_REPO
@@ -136,7 +141,7 @@ prepare-install-env() {
   determine-script-path
 
   if [ -z "${CONFIG_ABSOLUTE_DIR_PATH:-}" ] && [ -z "${CONFIG_FILENAME:-}" ]; then
-    determine-config-path "${1}"
+    determine-config-path "$1"
   fi
 
   if [ "${BACKUP_SCRIPT_CONFIG_LOADED:-}" != true ]; then
@@ -167,11 +172,11 @@ install() {
 
     echo "Installing to /usr/local/bin/${SCRIPT_FILENAME}"
 
-    sudo cp "${SCRIPT_ABSOLUTE_DIR_PATH}/${SCRIPT_FILENAME}" "/usr/local/bin/${SCRIPT_FILENAME}" || { echo "Unable to install script (${?})" >&2; exit 1; }
-    sudo chmod 0755 "/usr/local/bin/${SCRIPT_FILENAME}" || { echo "Unable to install script (${?})" >&2; exit 1; }
+    sudo cp "${SCRIPT_ABSOLUTE_DIR_PATH}/${SCRIPT_FILENAME}" "/usr/local/bin/${SCRIPT_FILENAME}" || fail "Unable to install script ($?)"
+    sudo chmod 0755 "/usr/local/bin/${SCRIPT_FILENAME}" || fail "Unable to install script ($?)"
 
     determine-root-user-and-group
-    sudo chown "${ROOT_USER_AND_GROUP}" "/usr/local/bin/${SCRIPT_FILENAME}" || { echo "Unable to install script (${?})" >&2; exit 1; }
+    sudo chown "${ROOT_USER_AND_GROUP}" "/usr/local/bin/${SCRIPT_FILENAME}" || fail "Unable to install script ($?)"
 
     install-dependencies
   else
@@ -184,31 +189,31 @@ install() {
     fi
 
     if [ -z "${CONFIG_ABSOLUTE_DIR_PATH:-}" ]; then
-      echo "Unable to install script, CONFIG_ABSOLUTE_DIR_PATH not found (${?})" >&2
+      echo "Unable to install script, CONFIG_ABSOLUTE_DIR_PATH not found ($?)" >&2
       exit 1
     fi
 
     echo "Installing to /usr/local/bin/${CONFIG_FILENAME}"
 
-    sudo cp "${CONFIG_ABSOLUTE_DIR_PATH}/${CONFIG_FILENAME}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" || { echo "Unable to install script (${?})" >&2; exit 1; }
+    sudo cp "${CONFIG_ABSOLUTE_DIR_PATH}/${CONFIG_FILENAME}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" || fail "Unable to install script ($?)"
 
     determine-tee-append-option
 
     echo "BACKUP_SCRIPT_CONFIG_LOADED=true" | sudo tee "${TEE_APPEND_OPTION}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" >/dev/null
-    test "${PIPESTATUS[*]}" = "0 0" || { echo "Unable to install script (${?})" >&2; exit 1; }
+    test "${PIPESTATUS[*]}" = "0 0" || fail "Unable to install script ($?)"
 
     echo "CONFIG_FILENAME=$(printf "%q" "${CONFIG_FILENAME}")" | sudo tee "${TEE_APPEND_OPTION}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" >/dev/null
-    test "${PIPESTATUS[*]}" = "0 0" || { echo "Unable to install script (${?})" >&2; exit 1; }
+    test "${PIPESTATUS[*]}" = "0 0" || fail "Unable to install script ($?)"
 
     cat "${SCRIPT_ABSOLUTE_DIR_PATH}/${SCRIPT_FILENAME}" | sudo tee "${TEE_APPEND_OPTION}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" >/dev/null
-    test "${PIPESTATUS[*]}" = "0 0" || { echo "Unable to install script (${?})" >&2; exit 1; }
+    test "${PIPESTATUS[*]}" = "0 0" || fail "Unable to install script ($?)"
 
-    sudo chmod 0755 "/usr/local/bin/${CONFIG_FILENAME}.tmp" || { echo "Unable to install script (${?})" >&2; exit 1; }
+    sudo chmod 0755 "/usr/local/bin/${CONFIG_FILENAME}.tmp" || fail "Unable to install script ($?)"
 
     determine-root-user-and-group
-    sudo chown "${ROOT_USER_AND_GROUP}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" || { echo "Unable to install script (${?})" >&2; exit 1; }
+    sudo chown "${ROOT_USER_AND_GROUP}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" || fail "Unable to install script ($?)"
 
-    sudo mv "/usr/local/bin/${CONFIG_FILENAME}.tmp" "/usr/local/bin/${CONFIG_FILENAME}" || { echo "Unable to install script (${?})" >&2; exit 1; }
+    sudo mv "/usr/local/bin/${CONFIG_FILENAME}.tmp" "/usr/local/bin/${CONFIG_FILENAME}" || fail "Unable to install script ($?)"
 
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
       install-systemd
@@ -224,7 +229,7 @@ uninstall() {
 
     echo "Uninstalling from /usr/local/bin/${SCRIPT_FILENAME}"
 
-    sudo rm "/usr/local/bin/${SCRIPT_FILENAME}" || { echo "Unable to remove script (${?})" >&2; exit 1; }
+    sudo rm "/usr/local/bin/${SCRIPT_FILENAME}" || fail "Unable to remove script ($?)"
   else
     prepare-install-env "$@"
 
@@ -236,7 +241,7 @@ uninstall() {
 
     echo "Uninstalling from /usr/local/bin/${CONFIG_FILENAME}"
 
-    sudo rm "/usr/local/bin/${CONFIG_FILENAME}" || { echo "Unable to remove script (${?})" >&2; exit 1; }
+    sudo rm "/usr/local/bin/${CONFIG_FILENAME}" || fail "Unable to remove script ($?)"
   fi
 }
 
@@ -245,12 +250,12 @@ install-dependencies() {
     if command -v brew >/dev/null; then
       echo "Press ENTER to install rclone using homebrew"
       read
-      brew install rclone || { echo "Unable to install rclone" >&2; exit 1; }
+      brew install rclone || fail "Unable to install rclone"
     else
       echo "Press ENTER to install rclone using curl | sudo bash"
       read
       curl --fail --silent --show-error https://rclone.org/install.sh | sudo bash
-      test "${PIPESTATUS[*]}" = "0 0" || { echo "Unable to install rclone" >&2; exit 1; }
+      test "${PIPESTATUS[*]}" = "0 0" || fail "Unable to install rclone"
     fi
   fi
 
@@ -258,11 +263,11 @@ install-dependencies() {
     if command -v brew >/dev/null; then
       echo "Press ENTER to install borgbackup using homebrew (brew cask install)"
       read
-      brew cask install borgbackup || { echo "Unable to install borg" >&2; exit 1; }
+      brew cask install borgbackup || fail "Unable to install borg"
     elif command -v apt >/dev/null; then
       echo "Press ENTER to install borgbackup using sudo apt"
       read
-      sudo apt install borgbackup || { echo "Unable to install borg" >&2; exit 1; }
+      sudo apt install borgbackup || fail "Unable to install borg"
     else
       echo "Unable to install borg" >&2
       exit 1
@@ -272,16 +277,16 @@ install-dependencies() {
 
 pause-launchd() {
   if launchctl list | grep --quiet --fixed-strings "${LAUNCHD_LABEL}"; then
-    launchctl remove "${LAUNCHD_LABEL}" || { echo "Unable to remove ${LAUNCHD_LABEL} (${?})" >&2; exit 1; }
+    launchctl remove "${LAUNCHD_LABEL}" || fail "Unable to remove ${LAUNCHD_LABEL} ($?)"
   fi
 }
 
 install-launchd() {
   local LAUNCH_AGENTS_DIR="${HOME}/Library/LaunchAgents"
 
-  mkdir -p "${LAUNCH_AGENTS_DIR}" || { echo "Unable to make directory ${LAUNCH_AGENTS_DIR} (${?})" >&2; exit 1; }
+  mkdir -p "${LAUNCH_AGENTS_DIR}" || fail "Unable to make directory ${LAUNCH_AGENTS_DIR} ($?)"
 
-cat <<PLIST | sudo tee "${LAUNCH_AGENTS_DIR}/${LAUNCHD_LABEL}.plist" || { echo "Unable to save ${LAUNCH_AGENTS_DIR}/${LAUNCHD_LABEL}.plist (${?})" >&2; exit 1; }
+cat <<PLIST | sudo tee "${LAUNCH_AGENTS_DIR}/${LAUNCHD_LABEL}.plist" || fail "Unable to save ${LAUNCH_AGENTS_DIR}/${LAUNCHD_LABEL}.plist ($?)"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -315,18 +320,18 @@ cat <<PLIST | sudo tee "${LAUNCH_AGENTS_DIR}/${LAUNCHD_LABEL}.plist" || { echo "
 </plist>
 PLIST
 
-  launchctl load -w "${LAUNCH_AGENTS_DIR}/${LAUNCHD_LABEL}.plist" || { echo "Unable to load ${LAUNCHD_LABEL} (${?})" >&2; exit 1; }
+  launchctl load -w "${LAUNCH_AGENTS_DIR}/${LAUNCHD_LABEL}.plist" || fail "Unable to load ${LAUNCHD_LABEL} ($?)"
 }
 
 uninstall-launchd() {
   pause-launchd
   local LAUNCH_AGENTS_DIR="${HOME}/Library/LaunchAgents"
-  rm -f "${LAUNCH_AGENTS_DIR}/${LAUNCHD_LABEL}.plist" || { echo "Unable to remove ${LAUNCHD_LABEL}.plist (${?})" >&2; exit 1; }
+  rm -f "${LAUNCH_AGENTS_DIR}/${LAUNCHD_LABEL}.plist" || fail "Unable to remove ${LAUNCHD_LABEL}.plist ($?)"
 }
 
 pause-systemd() {
   if sudo systemctl is-enabled "${SYSTEMD_NAME}.timer" >/dev/null 2>&1; then
-    sudo systemctl stop "${SYSTEMD_NAME}.timer" || { echo "Unable to stop timer (${?})" >&2; exit 1; }
+    sudo systemctl stop "${SYSTEMD_NAME}.timer" || fail "Unable to stop timer ($?)"
   fi
 }
 
@@ -337,7 +342,7 @@ install-systemd() {
 
   echo "### ${SYSTEMD_NAME}.service:"
 
-cat <<INI | sudo tee "/etc/systemd/system/${SYSTEMD_NAME}.service" || { echo "Unable to save ${SYSTEMD_NAME}.service (${?})" >&2; exit 1; }
+cat <<INI | sudo tee "/etc/systemd/system/${SYSTEMD_NAME}.service" || fail "Unable to save ${SYSTEMD_NAME}.service ($?)"
 [Unit]
 Description=Backup service for ${SYSTEMD_NAME}
 
@@ -365,7 +370,7 @@ INI
   echo ""
   echo "### ${SYSTEMD_NAME}.timer:"
 
-cat <<INI | sudo tee "/etc/systemd/system/${SYSTEMD_NAME}.timer" || { echo "Unable to save ${SYSTEMD_NAME}.timer (${?})" >&2; exit 1; }
+cat <<INI | sudo tee "/etc/systemd/system/${SYSTEMD_NAME}.timer" || fail "Unable to save ${SYSTEMD_NAME}.timer ($?)"
 [Unit]
 Description=Backup service timer for ${SYSTEMD_NAME}
 
@@ -378,20 +383,20 @@ INI
 
   echo ""
 
-  sudo systemctl reenable "${SYSTEMD_NAME}.service" || { echo "Unable to reenable ${SYSTEMD_NAME}.service (${?})" >&2; exit 1; }
-  sudo systemctl reenable "${SYSTEMD_NAME}.timer" || { echo "Unable to reenable ${SYSTEMD_NAME}.timer (${?})" >&2; exit 1; }
+  sudo systemctl reenable "${SYSTEMD_NAME}.service" || fail "Unable to reenable ${SYSTEMD_NAME}.service ($?)"
+  sudo systemctl reenable "${SYSTEMD_NAME}.timer" || fail "Unable to reenable ${SYSTEMD_NAME}.timer ($?)"
 
-  sudo systemctl start "${SYSTEMD_NAME}.timer" || { echo "Unable to start ${SYSTEMD_NAME}.timer (${?})" >&2; exit 1; }
+  sudo systemctl start "${SYSTEMD_NAME}.timer" || fail "Unable to start ${SYSTEMD_NAME}.timer ($?)"
 }
 
 uninstall-systemd() {
   pause-systemd
 
-  sudo systemctl disable "${SYSTEMD_NAME}.timer" || { echo "Unable to disable ${SYSTEMD_NAME}.timer (${?})" >&2; exit 1; }
-  sudo systemctl disable "${SYSTEMD_NAME}.service" || { echo "Unable to disable ${SYSTEMD_NAME}.service (${?})" >&2; exit 1; }
+  sudo systemctl disable "${SYSTEMD_NAME}.timer" || fail "Unable to disable ${SYSTEMD_NAME}.timer ($?)"
+  sudo systemctl disable "${SYSTEMD_NAME}.service" || fail "Unable to disable ${SYSTEMD_NAME}.service ($?)"
 
-  sudo rm "/etc/systemd/system/${SYSTEMD_NAME}.timer" || { echo "Unable to remove ${SYSTEMD_NAME}.timer file (${?})" >&2; exit 1; }
-  sudo rm "/etc/systemd/system/${SYSTEMD_NAME}.service" || { echo "Unable to remove ${SYSTEMD_NAME}.service file (${?})" >&2; exit 1; }
+  sudo rm "/etc/systemd/system/${SYSTEMD_NAME}.timer" || fail "Unable to remove ${SYSTEMD_NAME}.timer file ($?)"
+  sudo rm "/etc/systemd/system/${SYSTEMD_NAME}.service" || fail "Unable to remove ${SYSTEMD_NAME}.service file ($?)"
 }
 
 init() {
@@ -401,17 +406,17 @@ init() {
   if [ ! -d "${BORG_REPO}" ]; then
     echo "Running borg init"
 
-    borg init --encryption keyfile-blake2 || { echo "Borg init failed (${?})" >&2; exit 1; }
+    borg init --encryption keyfile-blake2 || fail "Borg init failed ($?)"
 
-    EXPORT_PATH="${KEY_EXPORT_DIR}/${REPO_NAME}-$(date +"%Y%m%dT%H%M%SZ")" || { echo "Unable to get current date" >&2; exit 1; }
+    EXPORT_PATH="${KEY_EXPORT_DIR}/${REPO_NAME}-$(date +"%Y%m%dT%H%M%SZ")" || fail "Unable to get current date"
 
-    mkdir -p "${KEY_EXPORT_DIR}" || { echo "Unable to create directory ${KEY_EXPORT_DIR}" >&2; exit 1; }
+    mkdir -p "${KEY_EXPORT_DIR}" || fail "Unable to create directory ${KEY_EXPORT_DIR}"
 
     echo "Exporting keys to ${EXPORT_PATH}"
 
-    borg key export "${BORG_REPO}" "${EXPORT_PATH}.key" || { echo "borg key export failed (${?})" >&2; exit 1; }
-    borg key export --paper "${BORG_REPO}" "${EXPORT_PATH}.txt" || { echo "borg key export failed (${?})" >&2; exit 1; }
-    borg key export --qr-html "${BORG_REPO}" "${EXPORT_PATH}.html" || { echo "borg key export failed (${?})" >&2; exit 1; }
+    borg key export "${BORG_REPO}" "${EXPORT_PATH}.key" || fail "borg key export failed ($?)"
+    borg key export --paper "${BORG_REPO}" "${EXPORT_PATH}.txt" || fail "borg key export failed ($?)"
+    borg key export --qr-html "${BORG_REPO}" "${EXPORT_PATH}.html" || fail "borg key export failed ($?)"
   fi
 
   if [ ! -z "${RCLONE_REMOTE:-}" ]; then
@@ -425,7 +430,7 @@ init() {
 
 determine-rclone-config-arg() {
   if [ ! -z "${RCLONE_CONFIG:-}" ]; then
-    RCLONE_CONFIG_ARG="--config $(printf "%q" "${RCLONE_CONFIG}")" || { echo "printf of RCLONE_CONFIG failed (${?})" >&2; exit 1; }
+    RCLONE_CONFIG_ARG="--config $(printf "%q" "${RCLONE_CONFIG}")" || fail "printf of RCLONE_CONFIG failed ($?)"
   fi
 }
 
@@ -434,7 +439,7 @@ rclone-config() {
 
   echo "Running rclone config"
 
-  rclone config ${RCLONE_CONFIG_ARG:-} || { echo "rclone config failed (${?})" >&2; exit 1; }
+  rclone config ${RCLONE_CONFIG_ARG:-} || fail "rclone config failed ($?)"
 }
 
 perform-backup-and-upload-offsite() {
@@ -478,13 +483,13 @@ add-files() {
 
   (
     # The purpose of this cd is to use relative to ${FROM_PATH} paths in backup
-    cd "${FROM_PATH}" || { echo "Unable to change directory to ${FROM_PATH} (${?})" >&2; exit 1; }
+    cd "${FROM_PATH}" || fail "Unable to change directory to ${FROM_PATH} ($?)"
 
     echo "Adding files to backup: $@"
 
-    borg create ${CREATE_VISUAL_ARGS:-} --compression zstd "::${CHECKPOINT:-}${PREFIX:-}{hostname}-{utcnow}" "$@" || { echo "borg create failed (${?})" >&2; exit 1; }
+    borg create ${CREATE_VISUAL_ARGS:-} --compression zstd "::${CHECKPOINT:-}${PREFIX:-}{hostname}-{utcnow}" "$@" || fail "borg create failed ($?)"
 
-    borg prune ${PRUNE_VISUAL_ARGS:-} --keep-within 4d --keep-daily=7 --keep-weekly=4 --keep-monthly=24 --prefix "${PREFIX:-}{hostname}" || { echo "borg prune failed (${?})" >&2; exit 1; }
+    borg prune ${PRUNE_VISUAL_ARGS:-} --keep-within 4d --keep-daily=7 --keep-weekly=4 --keep-monthly=24 --prefix "${PREFIX:-}{hostname}" || fail "borg prune failed ($?)"
   )
 }
 
@@ -511,24 +516,24 @@ upload-offsite() {
   fi
 
   if [ ! -d "${RCLONE_STATE_DIR}" ]; then
-    mkdir -p "${RCLONE_STATE_DIR}" || { echo "Unable to create directory ${RCLONE_STATE_DIR}" >&2; exit 1; }
+    mkdir -p "${RCLONE_STATE_DIR}" || fail "Unable to create directory ${RCLONE_STATE_DIR}"
   fi
 
   if [ -t 1 ]; then
     local VISUAL_ARGS="--progress"
   fi
 
-  local DATE_FLAG; DATE_FLAG="${RCLONE_STATE_DIR}/$(date +"%Y%m%d")-${BORG_REPO_HASH}" || { echo "Unable to get current date" >&2; exit 1; }
-  local MONTH_FLAG; MONTH_FLAG="${RCLONE_STATE_DIR}/$(date +"%Y%m")-${BORG_REPO_HASH}" || { echo "Unable to get current date" >&2; exit 1; }
+  local DATE_FLAG; DATE_FLAG="${RCLONE_STATE_DIR}/$(date +"%Y%m%d")-${BORG_REPO_HASH}" || fail "Unable to get current date"
+  local MONTH_FLAG; MONTH_FLAG="${RCLONE_STATE_DIR}/$(date +"%Y%m")-${BORG_REPO_HASH}" || fail "Unable to get current date"
 
   determine-rclone-config-arg
 
   if [ ! -f "${DATE_FLAG}.rclone-sync" ]; then
     echo "Starting rclone sync"
 
-    rclone sync "${BORG_REPO}" "${RCLONE_REMOTE}:${RCLONE_PATH}/${REPO_NAME}" ${RCLONE_CONFIG_ARG:-} ${VISUAL_ARGS:-} ${RCLONE_EXTRA_ARGS:-} || { echo "rclone sync failed (${?})" >&2; exit 1; }
+    rclone sync "${BORG_REPO}" "${RCLONE_REMOTE}:${RCLONE_PATH}/${REPO_NAME}" ${RCLONE_CONFIG_ARG:-} ${VISUAL_ARGS:-} ${RCLONE_EXTRA_ARGS:-} || fail "rclone sync failed ($?)"
 
-    touch "${DATE_FLAG}.rclone-sync" || { echo "Unable to set backup state in ${RCLONE_STATE_DIR}" >&2; exit 1; }
+    touch "${DATE_FLAG}.rclone-sync" || fail "Unable to set backup state in ${RCLONE_STATE_DIR}"
 
     echo "rclone sync done"
   fi
@@ -536,9 +541,9 @@ upload-offsite() {
   if [ ! -f "${MONTH_FLAG}.rclone-check" ]; then
     echo "Starting rclone check"
 
-    rclone check "${BORG_REPO}" "${RCLONE_REMOTE}:${RCLONE_PATH}/${REPO_NAME}" ${RCLONE_CONFIG_ARG:-} ${VISUAL_ARGS:-} ${RCLONE_EXTRA_ARGS:-} || { echo "rclone check failed (${?})" >&2; exit 1; }
+    rclone check "${BORG_REPO}" "${RCLONE_REMOTE}:${RCLONE_PATH}/${REPO_NAME}" ${RCLONE_CONFIG_ARG:-} ${VISUAL_ARGS:-} ${RCLONE_EXTRA_ARGS:-} || fail "rclone check failed ($?)"
 
-    touch "${MONTH_FLAG}.rclone-check" || { echo "Unable to set backup state in ${RCLONE_STATE_DIR}" >&2; exit 1; }
+    touch "${MONTH_FLAG}.rclone-check" || fail "Unable to set backup state in ${RCLONE_STATE_DIR}"
 
     echo "rclone check done"
   fi
@@ -547,22 +552,22 @@ upload-offsite() {
 start() {
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     prepare-systemd-env
-    sudo systemctl --no-block start "${SYSTEMD_NAME}.service" || { echo "Unable to start (${?})" >&2; exit 1; }
+    sudo systemctl --no-block start "${SYSTEMD_NAME}.service" || fail "Unable to start ($?)"
 
   elif [[ "$OSTYPE" == "darwin"* ]]; then
     prepare-launchd-env
-    launchctl start "${LAUNCHD_LABEL}" || { echo "Unable to start ${LAUNCHD_LABEL} (${?})" >&2; exit 1; }
+    launchctl start "${LAUNCHD_LABEL}" || fail "Unable to start ${LAUNCHD_LABEL} ($?)"
   fi
 }
 
 stop() {
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     prepare-systemd-env
-    sudo systemctl stop "${SYSTEMD_NAME}.service" || { echo "Unable to stop (${?})" >&2; exit 1; }
+    sudo systemctl stop "${SYSTEMD_NAME}.service" || fail "Unable to stop ($?)"
 
   elif [[ "$OSTYPE" == "darwin"* ]]; then
     prepare-launchd-env
-    launchctl stop "${LAUNCHD_LABEL}" || { echo "Unable to stop ${LAUNCHD_LABEL} (${?})" >&2; exit 1; }
+    launchctl stop "${LAUNCHD_LABEL}" || fail "Unable to stop ${LAUNCHD_LABEL} ($?)"
   fi
 }
 
@@ -591,7 +596,7 @@ shell() {
 }
 
 use() {
-  determine-config-path "${1}"
+  determine-config-path "$1"
 
   . "${CONFIG_ABSOLUTE_DIR_PATH}/${CONFIG_FILENAME}"
 

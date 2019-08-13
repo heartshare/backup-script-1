@@ -38,5 +38,5 @@ RCLONE_EXTRA_ARGS="--bwlimit 500k"
 # CHECKPOINT=""
 
 make-backup() {
-  PREFIX="" FROM_PATH="/usr/share" add-files man
+  PREFIX="" FROM_PATH="/usr/share" add-files man || fail
 }

@@ -10,7 +10,7 @@ If you wish to fine-tune the borgbackup, rclone or systemd services I suggest yo
 
 1. Checkout the repository
 
-2. Install backup-script system-wide and install dependencies if needed (rclone and borgbackup):
+2. Run the following command to install backup-script system-wide and install dependencies if needed (rclone and borgbackup):
 
 ```sh
 ./backup-script install
@@ -18,7 +18,7 @@ If you wish to fine-tune the borgbackup, rclone or systemd services I suggest yo
 
 3. Write your backup configuration. Use `test-backup` file as a reference.
 
-4. Make an executable bundle from your configuration and backup-script, install it system-wide, and register systemd/launchd periodic jobs:
+4. Run the following command to make an executable bundle from your configuration and backup-script, install it system-wide, and register systemd/launchd periodic jobs:
 
 ```sh
 backup-script install test-backup # or ./path/to/test-backup
@@ -30,7 +30,7 @@ backup-script install test-backup # or ./path/to/test-backup
 ./backup-script install test-backup
 ```
 
-5. Initialize the borg-backup repository:
+5. Run the following command to initialize the borg-backup repository:
 ```sh
 test-backup init
 ```
