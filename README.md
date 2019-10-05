@@ -72,7 +72,3 @@ backup-script use test-backup status
 backup-script use test-backup log
 backup-script use test-backup shell
 ```
-
-### LED blinking
-
-If you happens to use that script on your Raspberry Pi you may wish to blink LED to signal that services are working well. Use [led-heartbeat.service](led-heartbeat.service) and [led-heartbeat.sh](led-heartbeat.sh) as a reference to do that.
