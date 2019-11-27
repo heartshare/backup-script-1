@@ -29,14 +29,6 @@ determine-root-user-and-group() {
   fi
 }
 
-determine-tee-append-option() {
-  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    TEE_APPEND_OPTION="--append"
-  elif [[ "$OSTYPE" == "darwin"* ]]; then
-    TEE_APPEND_OPTION="-a"
-  fi
-}
-
 determine-script-path() {
   local RELATIVE_DIR_PATH
 
@@ -197,15 +189,13 @@ install() {
 
     sudo cp "${CONFIG_ABSOLUTE_DIR_PATH}/${CONFIG_FILENAME}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" || fail "Unable to install script ($?)"
 
-    determine-tee-append-option
-
-    echo "BACKUP_SCRIPT_CONFIG_LOADED=true" | sudo tee "${TEE_APPEND_OPTION}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" >/dev/null
+    echo "BACKUP_SCRIPT_CONFIG_LOADED=true" | sudo tee -a "/usr/local/bin/${CONFIG_FILENAME}.tmp" >/dev/null
     test "${PIPESTATUS[*]}" = "0 0" || fail "Unable to install script ($?)"
 
-    echo "CONFIG_FILENAME=$(printf "%q" "${CONFIG_FILENAME}")" | sudo tee "${TEE_APPEND_OPTION}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" >/dev/null
+    echo "CONFIG_FILENAME=$(printf "%q" "${CONFIG_FILENAME}")" | sudo tee -a "/usr/local/bin/${CONFIG_FILENAME}.tmp" >/dev/null
     test "${PIPESTATUS[*]}" = "0 0" || fail "Unable to install script ($?)"
 
-    cat "${SCRIPT_ABSOLUTE_DIR_PATH}/${SCRIPT_FILENAME}" | sudo tee "${TEE_APPEND_OPTION}" "/usr/local/bin/${CONFIG_FILENAME}.tmp" >/dev/null
+    cat "${SCRIPT_ABSOLUTE_DIR_PATH}/${SCRIPT_FILENAME}" | sudo tee -a "/usr/local/bin/${CONFIG_FILENAME}.tmp" >/dev/null
     test "${PIPESTATUS[*]}" = "0 0" || fail "Unable to install script ($?)"
 
     sudo chmod 0755 "/usr/local/bin/${CONFIG_FILENAME}.tmp" || fail "Unable to install script ($?)"
